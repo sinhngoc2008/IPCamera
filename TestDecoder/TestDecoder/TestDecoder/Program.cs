@@ -6,6 +6,8 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
+
+
 namespace TestDecoder
 {
     static class Program
@@ -23,45 +25,7 @@ namespace TestDecoder
         static void Main()
         {
             Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            IntPtr pDll = NativeMethods.LoadLibrary(@"D:\Project\IPCamera\IPCamera\TestDecoder\TestDecoder\Debug\IMFClassMiddle.dll");
-
-            
-            //oh dear, error handling here
-            if (pDll == IntPtr.Zero)
-            {
-                Debug.WriteLine("ERRORR pDll >>>>>>>>>>>");
-                return; 
-            }
-
-            IntPtr pAddressOfFunctionToCall = NativeMethods.GetProcAddress(pDll, "MultiplyByTen");
-            //oh dear, error handling here
-            if (pAddressOfFunctionToCall == IntPtr.Zero)
-            {
-                Debug.WriteLine("ERRORR pAddressOfFunctionToCall >>>>>>>>>");
-                return;
-            }
-
-
-
-            MultiplyByTen multiplyByTen = (MultiplyByTen)Marshal.GetDelegateForFunctionPointer(
-                                                                                    pAddressOfFunctionToCall,
-                                                                                    typeof(MultiplyByTen));
-
-            int theResult = multiplyByTen(300);
-            //remaining code here
-            Console.WriteLine(theResult); 
-
-            bool result = NativeMethods.FreeLibrary(pDll); 
-
-
-
-            IntPtr module = NativeMethods.LoadLibrary("msmpeg2vdec.dll");
-
-            IntPtr myFunction = NativeMethods.GetProcAddress(module, "ICodecAPI");
-
-
-
+            Application.SetCompatibleTextRenderingDefault(false); 
             Application.Run(new ViewImage());
 
 
@@ -88,9 +52,6 @@ namespace TestDecoder
 
         [DllImport("msmpeg2vdec.dll")]
         static public extern IntPtr IMFTransform();
-
-        
-
     }
 
 }

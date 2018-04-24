@@ -33,14 +33,15 @@ using namespace std;
 int _tmain(int argc, _TCHAR* argv[])
 {
 	const int SAMPLE_COUNT = 30;
-	const int VIDEO_SAMPLE_WIDTH = 640;	// Note the frmae width and height need to be set based on the frame size in the MP4 file.
-	const int VIDEO_SAMPLE_HEIGHT = 360;
-
 	//const int VIDEO_SAMPLE_WIDTH = 640;	// Note the frmae width and height need to be set based on the frame size in the MP4 file.
-	//const int VIDEO_SAMPLE_HEIGHT = 480;
+	//const int VIDEO_SAMPLE_HEIGHT = 360;
+
+	const int VIDEO_SAMPLE_WIDTH = 1920;	// Note the frmae width and height need to be set based on the frame size in the MP4 file.
+	const int VIDEO_SAMPLE_HEIGHT = 1080;
 
 	//wchar_t *filename = L"D:\\Project\\IPCamera\\IPCamera\\TestDecoder\\TestDecoder\\Debug\\big_buck_bunny.mp4";
-	wchar_t *filename = L"D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/Debug/big_buck_bunny.mp4";
+	//wchar_t *filename = L"D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/Debug/big_buck_bunny.mp4";
+	wchar_t *filename = L"D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/inputvideo/video1.mp4";
 	//wchar_t *filename = L"D:/Project/IPCamera/TMP/mediafoundationsamples/MediaFiles/big_buck_bunny.mp4";
 
 	IMFSourceReader *m_pReader;
@@ -64,6 +65,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	MFStartup(MF_VERSION);
+	
 
 	// Set up the reader for the file.
 	CHECK_HR(MFCreateSourceResolver(&pSourceResolver), "MFCreateSourceResolver failed.\n");
@@ -89,10 +91,24 @@ int _tmain(int argc, _TCHAR* argv[])
 	CHECK_HR(MFCreateSourceReaderFromMediaSource(mediaFileSource, pVideoReaderAttributes, &pSourceReader),
 		"Error creating media source reader.\n");
 
-	CHECK_HR(pSourceReader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pFileVideoMediaType),
-		"Error retrieving current media type from first video stream.\n");
+	//CHECK_HR(pSourceReader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pFileVideoMediaType), "Error retrieving current media type from first video stream.\n");
+
+#if 0
 
 
+	// Create H.264 decoder.
+	CHECK_HR(CoCreateInstance(CLSID_CMSH264DecoderMFT, NULL, CLSCTX_INPROC_SERVER,
+		IID_IUnknown, (void**)&spDecTransformUnk), "Failed to create H264 decoder MFT.\n");
+
+	//Init MF Decoder Transform
+	CHECK_HR(spDecTransformUnk->QueryInterface(IID_PPV_ARGS(&pDecoderTransform)), "Failed to get IMFTransform interface from H264 decoder MFT object.\n");
+	//Set MediaType Input
+	MFCreateMediaType(&pDecInputMediaType);
+
+	//Connect source media to InputMediaType
+	// setup mediatype from source file
+	CHECK_HR(pFileVideoMediaType->CopyAllItems(pDecInputMediaType), "Error copying media type attributes to decoder input media type.\n");
+#else	
 	// Create H.264 decoder.
 	CHECK_HR(CoCreateInstance(CLSID_CMSH264DecoderMFT, NULL, CLSCTX_INPROC_SERVER,
 		IID_IUnknown, (void**)&spDecTransformUnk), "Failed to create H264 decoder MFT.\n");
@@ -102,8 +118,21 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	//Set MediaType Input
 	MFCreateMediaType(&pDecInputMediaType);
-	//Connect source media to InputMediaType
-	CHECK_HR(pFileVideoMediaType->CopyAllItems(pDecInputMediaType), "Error copying media type attributes to decoder input media type.\n");
+
+	// setup media type manualy 
+	pDecInputMediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+	pDecInputMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+
+	pDecInputMediaType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+	MFSetAttributeSize(pDecInputMediaType, MF_MT_FRAME_SIZE, VIDEO_SAMPLE_WIDTH, VIDEO_SAMPLE_HEIGHT);
+	unsigned __int32 fixedSampleSize = VIDEO_SAMPLE_WIDTH*(16 * ((VIDEO_SAMPLE_HEIGHT + 15) / 16)) + VIDEO_SAMPLE_WIDTH*(VIDEO_SAMPLE_HEIGHT / 2);//for Y, U and V
+	pDecInputMediaType->SetUINT32(MF_MT_SAMPLE_SIZE, fixedSampleSize);
+	pDecInputMediaType->SetUINT32(MF_MT_DEFAULT_STRIDE, VIDEO_SAMPLE_WIDTH);
+	pDecInputMediaType->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, TRUE);
+	pDecInputMediaType->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
+	MFSetAttributeRatio(pDecInputMediaType, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
+#endif
+
 	//Setup input media for transform
 	CHECK_HR(pDecoderTransform->SetInputType(0, pDecInputMediaType, 0), "Failed to set input media type on H.264 decoder MFT.\n");
 
@@ -148,7 +177,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	// Read file *.mp4 and Save one frame to file 
 #if 0
-	while (sampleCount <= 50)
+	while (sampleCount <= 160)
 	{
 		if (sampleCount >= 0)
 		{ 
@@ -169,7 +198,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				videoSample->GetSampleFlags(&flags);
 				videoSample->GetTotalLength(&bufferCount);
 
-				printf("Sample time %I64d, sample duration %I64d, sample flags %d, buffer count %i.\n", llVideoTimeStamp, llSampleDuration, flags, bufferCount);
+				printf("Sample time %I64d, sample duration %I64d, sample flags %d, buffer count %i. COUNT: %d\n", llVideoTimeStamp, llSampleDuration, flags, bufferCount, sampleCount);
 
 				IMFMediaBuffer *srcBuf = NULL;
 				byte *byteBuffer;
@@ -183,7 +212,6 @@ int _tmain(int argc, _TCHAR* argv[])
 				std::string count;
 				std::string name;
 				std::string frameurl = "D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/h264frames/";
-				std::string imgvurl = "D:/Project/IPCamera/IPCamera/TestDecode/TestDecoder/output/yuvimg/";
 				count = std::to_string(sampleCount);
 
 				name = "h264frames" + count + ".endc";
@@ -199,6 +227,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				CHECK_HR(srcBuf->Unlock(), "Error unlocking source buffer.\n");
 
 			}
+			sampleCount++;
 		}
 	}
 #endif
@@ -207,13 +236,15 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		int count = 0;
 		HRESULT frameProcessOutput = S_OK;
-		const char *inputurl = "D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/h264frames/";
+		//const char *inputurl = "D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/h264frames/";
+		const char *inputurl = "D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/captureframe/";
+
 		char *imgvurl = "D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/yuvimg/";
 		char *output;
 		 
 		memset(&outputDataBuffer, 0, sizeof outputDataBuffer);
 
-		while (sampleCount <= 50)
+		while (sampleCount <= 160)
 		{ 
 			// load file to buffer 	
 			//char *h264framefile = "h264frames0.endc";
@@ -228,7 +259,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			uint8_t buffer[MAX_BUFFER];
 			long buffer_size = 0;
 
-			std::string name = (string)inputurl + "rawframes" + to_string(sampleCount) + ".endc";
+			//std::string name = (string)inputurl + "h264frames" + to_string(sampleCount) + ".endc";
+			//std::string name = (string)inputurl + "rawframes" + to_string(sampleCount) + ".endc";
+			std::string name = (string)inputurl + to_string(sampleCount)+ "_rtsp_capture.endc";
 
 			printf("INPUT FILE NAME: %s\n", name.c_str());
 
@@ -279,9 +312,13 @@ int _tmain(int argc, _TCHAR* argv[])
 
 				CHECK_HR(pDecoderTransform->GetOutputStreamInfo(0, &StreamInfo), "Failed to get output stream info from H264 MFT.\n");
 
+				printf("STREAM INFO SIZE: %ld \n", StreamInfo.cbSize);
+				printf("lSize SIZE: %ld \n", lSize);
+
 				while (true)
 				{
 					CHECK_HR(MFCreateSample(&mftOutSample), "Failed to create MF sample.\n");
+					//CHECK_HR(MFCreateMemoryBuffer(lSize, &pBuffer), "Failed to create memory buffer.\n");
 					CHECK_HR(MFCreateMemoryBuffer(StreamInfo.cbSize, &pBuffer), "Failed to create memory buffer.\n");
 					CHECK_HR(mftOutSample->AddBuffer(pBuffer), "Failed to add sample to buffer.\n");
 					outputDataBuffer.dwStreamID = 0;
@@ -305,6 +342,7 @@ int _tmain(int argc, _TCHAR* argv[])
 						/*outputBuffer.write((char *)byteBuffer, bufLength);
 						outputBuffer.flush();*/
 
+						printf("Stream SIZE: %ld bufLength: %ld, buffCurrLen: %ld \n", StreamInfo.cbSize, bufLength, buffCurrLen);
 
 						std::string count;
 						std::string name;
@@ -328,7 +366,7 @@ int _tmain(int argc, _TCHAR* argv[])
 							outputBuffer1.flush();
 							outputBuffer1.close();
 
-							std::string instruction = "D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/ffmpeg.exe -vcodec rawvideo -s 640x360 -pix_fmt yuv420p -i " + yuvurl + name + " -vframes 1 " + imgvurl + name + ".jpeg -y";
+							std::string instruction = "D:/Project/IPCamera/IPCamera/TestDecoder/TestDecoder/output/ffmpeg.exe -vcodec rawvideo -s 1920x1080 -pix_fmt yuv420p -i " + yuvurl + name + " -vframes 1 " + imgvurl + name + ".jpeg -y";
 
 							const char * ins = instruction.c_str();
 							printf("INSTRUCTION: %s\n", ins);

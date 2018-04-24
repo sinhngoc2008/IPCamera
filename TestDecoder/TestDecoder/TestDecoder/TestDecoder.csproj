@@ -32,6 +32,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="MediaFoundation">
+      <HintPath>..\IMFLib\MediaFoundation.dll</HintPath>
+    </Reference>
+    <Reference Include="MediaFoundation.Extension">
+      <HintPath>..\IMFLib\MediaFoundation.Extension.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -44,6 +50,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IMFDecoder.cs" />
     <Compile Include="ViewImage.cs">
       <SubType>Form</SubType>
     </Compile>
